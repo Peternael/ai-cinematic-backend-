@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+requests
+python-multipart
+pillow
+edge-tts
+moviepy
+pydub
+fal-client
+scipy
+numpy
