@@ -18,23 +18,18 @@ def upload_to_fal_storage(file_path):
     return url
 
 # =========================================
-# APPLY LIP SYNC (SYNC.SO) - المتعدل
+# APPLY LIP SYNC (SYNC.SO) - النسخة المصلحة للـ Segments
 # =========================================
 def apply_lipsync(video_url, audio_url, bounding_boxes=None, timeline=None, char_list=None):
 
-    # =========================================
-    # BUILD OPTIONS & SEGMENTS
-    # =========================================
     options = {
         "sync_mode": "cut_off"
     }
     
     segments_payload = []
 
-    # الخدعة الذكية: لو الـ timeline والـ شخصيات مبعوتين، بنبني الـ segments بالملي
     if timeline and char_list:
         try:
-            # بنرتب الشخصيات: الاسم الأول بياخد ID 0 (الشمال)، الاسم الثاني بياخد ID 1 (اليمين)
             char_names = [c["name"].strip().lower() for c in char_list]
             
             for speaker, start, end in timeline:
@@ -42,17 +37,20 @@ def apply_lipsync(video_url, audio_url, bounding_boxes=None, timeline=None, char
                 if speaker_clean in char_names:
                     speaker_id = char_names.index(speaker_clean)
                     
+                    # التعديل الجوهري هنا: ضفنا الـ audioInput اللي الـ API عاوزه
                     segments_payload.append({
                         "start": float(start),
                         "end": float(end),
-                        "speaker_id": speaker_id
+                        "speaker_id": speaker_id,
+                        "audioInput": {
+                            "refId": "main_audio"  # بنربطه بـ id ملف الصوت تحت
+                        }
                     })
-            print(f"[LIPSYNC] SUCCESSFULLY BUILT SEGMENTS: {segments_payload}")
+            print(f"[LIPSYNC] SUCCESSFULLY BUILT SEGMENTS WITH AUDIO REF: {segments_payload}")
         except Exception as seg_err:
             print(f"[LIPSYNC] Error building segments, falling back to ASD: {seg_err}")
             segments_payload = []
 
-    # لو الـ segments متبنتش (أو حصل مشكلة)، بنرجع للنظام القديم بتاعك تماماً
     if not segments_payload:
         if bounding_boxes is not None:
             asd_config = {
@@ -66,16 +64,18 @@ def apply_lipsync(video_url, audio_url, bounding_boxes=None, timeline=None, char
         print("[LIPSYNC] USING OLD ACTIVE SPEAKER DETECTION MODE")
 
     # =========================================
-    # CREATE JOB PAYLOAD
+    # CREATE JOB PAYLOAD (تعديل الـ Input IDs)
     # =========================================
     job_payload = {
         "model": "sync-3",
         "input": [
             {
+                "id": "main_video",  # تعريف معرف الفيديو
                 "type": "video",
                 "url": video_url
             },
             {
+                "id": "main_audio",  # تعريف معرف الصوت (هو ده الـ refId اللي السيرفر طالبه!)
                 "type": "audio",
                 "url": audio_url
             }
@@ -83,7 +83,6 @@ def apply_lipsync(video_url, audio_url, bounding_boxes=None, timeline=None, char
         "options": options
     }
 
-    # لو الـ segments جاهزة بنضيفها للـ Payload الرئيسي حسب توثيق Sync.so
     if segments_payload:
         job_payload["segments"] = segments_payload
 
