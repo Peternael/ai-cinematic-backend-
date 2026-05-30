@@ -560,15 +560,17 @@ async def generate_video_v2_api(
 
         return JSONResponse({
 
-            "success": True,
+        "success": True,
 
-            "status": "COMPLETED",
+        "status": "COMPLETED",
 
-            "video_path": final_video_path,
+        "video_url": final_url,
 
-            "audio_path": audio_path,
+        "video_path": final_video_path,
 
-            "time_taken": total_time
+        "audio_path": audio_path,
+
+        "time_taken": total_time
 
         })
 
