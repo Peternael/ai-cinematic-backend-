@@ -510,6 +510,15 @@ async def generate_video_v2_api(
 
         audio_path = f"outputs/{request_id}.mp3"
 
+        print("CHAR_LIST:")
+        print(char_list)
+
+        print("VOICE_MAP:")
+        print(voice_map)
+
+        print("DIALOGUE:")
+        print(dialogue)
+
         audio_duration, timeline = generate_dialogue(
             dialogue,
             audio_path,
