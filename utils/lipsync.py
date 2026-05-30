@@ -11,70 +11,92 @@ os.environ["FAL_KEY"] = FAL_API_KEY
 # =========================================
 # UPLOAD AUDIO TO FAL STORAGE
 # =========================================
-
 def upload_to_fal_storage(file_path):
-
     url = fal_client.upload_file(file_path)
-
     print("FAL UPLOAD URL:")
     print(url)
-
     return url
 
 # =========================================
-# APPLY LIP SYNC (SYNC.SO)
+# APPLY LIP SYNC (SYNC.SO) - المتعدل
 # =========================================
-
-def apply_lipsync(video_url, audio_url, bounding_boxes=None):
+def apply_lipsync(video_url, audio_url, bounding_boxes=None, timeline=None, char_list=None):
 
     # =========================================
-    # BUILD OPTIONS
+    # BUILD OPTIONS & SEGMENTS
     # =========================================
-
-    if bounding_boxes is not None:
-
-        asd_config = {
-            "auto_detect": False,
-            "bounding_boxes": bounding_boxes
-        }
-
-    else:
-
-        asd_config = {"auto_detect": True}
-
     options = {
-        "sync_mode": "cut_off",
-        "active_speaker_detection": asd_config
+        "sync_mode": "cut_off"
+    }
+    
+    segments_payload = []
+
+    # الخدعة الذكية: لو الـ timeline والـ شخصيات مبعوتين، بنبني الـ segments بالملي
+    if timeline and char_list:
+        try:
+            # بنرتب الشخصيات: الاسم الأول بياخد ID 0 (الشمال)، الاسم الثاني بياخد ID 1 (اليمين)
+            char_names = [c["name"].strip().lower() for c in char_list]
+            
+            for speaker, start, end in timeline:
+                speaker_clean = speaker.strip().lower()
+                if speaker_clean in char_names:
+                    speaker_id = char_names.index(speaker_clean)
+                    
+                    segments_payload.append({
+                        "start": float(start),
+                        "end": float(end),
+                        "speaker_id": speaker_id
+                    })
+            print(f"[LIPSYNC] SUCCESSFULLY BUILT SEGMENTS: {segments_payload}")
+        except Exception as seg_err:
+            print(f"[LIPSYNC] Error building segments, falling back to ASD: {seg_err}")
+            segments_payload = []
+
+    # لو الـ segments متبنتش (أو حصل مشكلة)، بنرجع للنظام القديم بتاعك تماماً
+    if not segments_payload:
+        if bounding_boxes is not None:
+            asd_config = {
+                "auto_detect": False,
+                "bounding_boxes": bounding_boxes
+            }
+        else:
+            asd_config = {"auto_detect": True}
+            
+        options["active_speaker_detection"] = asd_config
+        print("[LIPSYNC] USING OLD ACTIVE SPEAKER DETECTION MODE")
+
+    # =========================================
+    # CREATE JOB PAYLOAD
+    # =========================================
+    job_payload = {
+        "model": "sync-3",
+        "input": [
+            {
+                "type": "video",
+                "url": video_url
+            },
+            {
+                "type": "audio",
+                "url": audio_url
+            }
+        ],
+        "options": options
     }
 
-    # =========================================
-    # CREATE JOB
-    # =========================================
+    # لو الـ segments جاهزة بنضيفها للـ Payload الرئيسي حسب توثيق Sync.so
+    if segments_payload:
+        job_payload["segments"] = segments_payload
 
+    # =========================================
+    # CREATE JOB REQUEST
+    # =========================================
     create_response = requests.post(
-
         "https://api.sync.so/v2/generate",
-
         headers={
             "x-api-key": SYNCSO_API_KEY,
             "Content-Type": "application/json"
         },
-
-        json={
-            "model": "sync-3",
-            "input": [
-                {
-                    "type": "video",
-                    "url": video_url
-                },
-                {
-                    "type": "audio",
-                    "url": audio_url
-                }
-            ],
-            "options": options
-        },
-
+        json=job_payload,
         timeout=60
     )
 
@@ -84,7 +106,6 @@ def apply_lipsync(video_url, audio_url, bounding_boxes=None):
     print(create_data)
 
     if "id" not in create_data:
-
         raise Exception(
             f"Sync.so Create Error: {create_data}"
         )
@@ -94,19 +115,14 @@ def apply_lipsync(video_url, audio_url, bounding_boxes=None):
     # =========================================
     # POLL UNTIL DONE
     # =========================================
-
     for attempt in range(60):
-
         time.sleep(5)
 
         poll_response = requests.get(
-
             f"https://api.sync.so/v2/generate/{job_id}",
-
             headers={
                 "x-api-key": SYNCSO_API_KEY
             },
-
             timeout=30
         )
 
@@ -118,19 +134,14 @@ def apply_lipsync(video_url, audio_url, bounding_boxes=None):
         status = poll_data.get("status")
 
         if status == "COMPLETED":
-
             output_url = poll_data.get("outputUrl")
-
             if not output_url:
-
                 raise Exception(
                     f"Sync.so completed but no outputUrl: {poll_data}"
                 )
-
             return output_url
 
         if status == "FAILED":
-
             raise Exception(
                 f"Sync.so job failed: {poll_data}"
             )
