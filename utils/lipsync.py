@@ -70,12 +70,12 @@ def apply_lipsync(video_url, audio_url, bounding_boxes=None, timeline=None, char
         "model": "sync-3",
         "input": [
             {
-                "id": "main_video",  # تعريف معرف الفيديو
+                "refId": "main_video",  # تعريف معرف الفيديو
                 "type": "video",
                 "url": video_url
             },
             {
-                "id": "main_audio",  # تعريف معرف الصوت (هو ده الـ refId اللي السيرفر طالبه!)
+                "refId": "main_audio",  # تعريف معرف الصوت (هو ده الـ refId اللي السيرفر طالبه!)
                 "type": "audio",
                 "url": audio_url
             }
