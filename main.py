@@ -546,8 +546,6 @@ async def generate_video_v2_api(
         final_url = apply_lipsync(
         video_fal_url,
         audio_fal_url,
-        timeline=timeline,
-        char_list=char_list
 )
 
         final_video_path = f"outputs/{request_id}_final.mp4"
