@@ -17,8 +17,6 @@ def generate_identity_scene(
 ):
 
     prompt = """
-Create a realistic cinematic image of these exact two Arab male friends sitting together on Cairo Nile Corniche at night.
-
 Preserve exact facial identity,
 hairstyle,
 skin tone,
@@ -28,7 +26,6 @@ and appearance from the uploaded reference photos.
 The two people should look exactly like the real persons in the reference images.
 
 Ultra realistic cinematic lighting.
-Natural sitting pose.
 Emotional atmosphere.
 Film look.
 Highly detailed skin texture.
@@ -72,7 +69,7 @@ Highly detailed skin texture.
 # MERGE CHARACTERS (NANO BANANA PRO)
 # =========================================
 
-def merge_characters_pro(image_urls, prompt, characters=None):
+def merge_characters_pro(image_urls, prompt, characters=None, speakers=None):
 
     n = len(image_urls)
 
@@ -83,10 +80,21 @@ def merge_characters_pro(image_urls, prompt, characters=None):
     else:
         people_clause = ""
 
+    # staging hint so the active speaker is mid-conversation and the rest react
+    if speakers:
+        speaking = ", ".join(speakers)
+        staging_clause = (
+            f"{speaking} is speaking; the others are listening and reacting naturally."
+        )
+    else:
+        staging_clause = ""
+
     identity_prompt = f"""
 Create a realistic cinematic image featuring the {n} people from the uploaded reference photos together in the scene below.
 
 {people_clause}
+
+{staging_clause}
 
 PRESERVE exact facial identity, hairstyle, skin tone, facial structure, and overall appearance of EACH person from their reference photo.
 Each person in the output MUST look exactly like the corresponding real person in the reference images — same face, same features, same identity.

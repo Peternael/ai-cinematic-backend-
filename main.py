@@ -445,7 +445,19 @@ async def generate_video_v2_api(
 
         print(f"CHARACTERS: {[c['name'] for c in char_list]}")
 
-        voice_map = {c["name"]: c["voice_id"] for c in char_list}
+        # one character entry per uploaded image (the people visible in the scene)
+        if len(char_list) != len(images):
+            return JSONResponse({
+                "success": False,
+                "error": (
+                    f"Provide one character entry per uploaded image "
+                    f"(got {len(char_list)} characters, {len(images)} images)."
+                )
+            })
+
+        # only characters with a voice_id can speak; silent characters are still
+        # rendered but have no entry here, so generate_dialogue ignores them
+        voice_map = {c["name"]: c["voice_id"] for c in char_list if c.get("voice_id")}
 
         # =========================================
         # STEP 1 - SAVE + UPLOAD IMAGES
@@ -474,7 +486,19 @@ async def generate_video_v2_api(
 
         print("STEP 2 -> MERGE COMPOSITE (NANO BANANA PRO)")
 
-        composite_url = merge_characters_pro(image_urls, prompt, char_list)
+        # who actually has lines (matched case-insensitively to voice_map names)
+        speakers = [
+            name for name in voice_map
+            if any(
+                line.split(":", 1)[0].strip().lower() == name.strip().lower()
+                for line in dialogue.replace("：", ":").split("\n")
+                if ":" in line
+            )
+        ]
+
+        print(f"SPEAKERS: {speakers}")
+
+        composite_url = merge_characters_pro(image_urls, prompt, char_list, speakers)
 
         print(f"COMPOSITE URL: {composite_url}")
 
