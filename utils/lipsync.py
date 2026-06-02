@@ -1,10 +1,7 @@
 import os
-import requests
-import time
 import fal_client
 
 FAL_API_KEY = "fc820905-8029-4431-95ea-f40ee9583ad8:9f7fac6c7325c20a10b909034f77213a"
-SYNCSO_API_KEY = "sk-099_9IuRTWaFyex4Kw2Q_Q.d3J55Ad8fE5yD3VoYn-v1w4DuNjsoOYg"
 
 os.environ["FAL_KEY"] = FAL_API_KEY
 
@@ -22,117 +19,26 @@ def upload_to_fal_storage(file_path):
     return url
 
 # =========================================
-# APPLY LIP SYNC (SYNC.SO)
+# APPLY LIP SYNC (FAL sync-lipsync v3 / sync-3)
 # =========================================
+# sync-3 has native multi-speaker active-speaker detection: it builds a global
+# understanding of the shot and routes each distinct voice to its own face. So
+# we feed the combined dialogue audio and let sync-3 split it across faces.
 
-def apply_lipsync(video_url, audio_url, bounding_boxes=None):
+def apply_lipsync(video_url, audio_url, sync_mode="cut_off"):
 
-    # =========================================
-    # BUILD OPTIONS
-    # =========================================
-
-    if bounding_boxes is not None:
-
-        asd_config = {
-            "auto_detect": False,
-            "bounding_boxes": bounding_boxes
-        }
-
-    else:
-
-        asd_config = {"auto_detect": True}
-
-    options = {
-        "sync_mode": "cut_off",
-        "active_speaker_detection": asd_config
-    }
-
-    # =========================================
-    # CREATE JOB
-    # =========================================
-
-    create_response = requests.post(
-
-        "https://api.sync.so/v2/generate",
-
-        headers={
-            "x-api-key": SYNCSO_API_KEY,
-            "Content-Type": "application/json"
+    result = fal_client.subscribe(
+        "fal-ai/sync-lipsync/v3",
+        arguments={
+            "video_url": video_url,
+            "audio_url": audio_url,
+            "sync_mode": sync_mode,
         },
-
-        json={
-            "model": "sync-3",
-            "input": [
-                {
-                    "type": "video",
-                    "url": video_url
-                },
-                {
-                    "type": "audio",
-                    "url": audio_url
-                }
-            ],
-            "options": options
-        },
-
-        timeout=60
+        with_logs=True,
+        on_queue_update=lambda u: print(f"FAL SYNC-LIPSYNC v3: {u}"),
     )
 
-    create_data = create_response.json()
+    print("FAL SYNC-LIPSYNC v3 RESULT:")
+    print(result)
 
-    print("SYNCSO CREATE RESPONSE:")
-    print(create_data)
-
-    if "id" not in create_data:
-
-        raise Exception(
-            f"Sync.so Create Error: {create_data}"
-        )
-
-    job_id = create_data["id"]
-
-    # =========================================
-    # POLL UNTIL DONE
-    # =========================================
-
-    for attempt in range(60):
-
-        time.sleep(5)
-
-        poll_response = requests.get(
-
-            f"https://api.sync.so/v2/generate/{job_id}",
-
-            headers={
-                "x-api-key": SYNCSO_API_KEY
-            },
-
-            timeout=30
-        )
-
-        poll_data = poll_response.json()
-
-        print(f"SYNCSO POLL [{attempt + 1}]:")
-        print(poll_data)
-
-        status = poll_data.get("status")
-
-        if status == "COMPLETED":
-
-            output_url = poll_data.get("outputUrl")
-
-            if not output_url:
-
-                raise Exception(
-                    f"Sync.so completed but no outputUrl: {poll_data}"
-                )
-
-            return output_url
-
-        if status == "FAILED":
-
-            raise Exception(
-                f"Sync.so job failed: {poll_data}"
-            )
-
-    raise Exception("Sync.so timed out after 5 minutes")
+    return result["video"]["url"]

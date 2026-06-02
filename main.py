@@ -535,18 +535,19 @@ async def generate_video_v2_api(
         print(f"AUDIO DURATION: {audio_duration} sec")
 
         # =========================================
-        # STEP 5 - LIP-SYNC VIA SYNC.SO
+        # STEP 5 - LIP-SYNC (FAL sync-3, native multi-speaker)
         # =========================================
+        #
+        # sync-3 natively handles multiple speakers: it associates each distinct
+        # voice in the combined audio with its own face and lip-syncs only the
+        # active speaker. One call on the combined dialogue track.
 
-        print("STEP 5 -> LIP-SYNC (sync.so)")
+        print("STEP 5 -> LIP-SYNC (fal sync-3)")
 
         video_fal_url = upload_to_fal_storage(base_video_path)
         audio_fal_url = upload_to_fal_storage(audio_path)
 
-        final_url = apply_lipsync(
-        video_fal_url,
-        audio_fal_url,
-)
+        final_url = apply_lipsync(video_fal_url, audio_fal_url)
 
         final_video_path = f"outputs/{request_id}_final.mp4"
 
