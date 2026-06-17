@@ -8,8 +8,7 @@ ELEVEN_API_KEY = "573e73750e552b6f9bb6026eefbfb18e8e078f1a8fc4e449d29d9a9b46be5f
 # GENERATE SINGLE VOICE
 # =========================================
 def generate_single_voice(text, voice_id, output_path):
-    url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
-
+    url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}?output_format=mp3_44100_128"
     headers = {
         "xi-api-key": ELEVEN_API_KEY,
         "Accept": "audio/mpeg",
