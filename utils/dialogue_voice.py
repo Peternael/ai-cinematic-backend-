@@ -27,10 +27,11 @@ def generate_single_voice(text, voice_id, output_path):
 
     response = requests.post(url, json=payload, headers=headers)
 
+    # 👇 السطر الوحيد اللي اتغيّر: بيوضّح رقم الخطأ + الرسالة في اللوج بدل ما تتخبّى
     if response.status_code != 200:
-        raise Exception(response.text)
+        raise Exception(f"ELEVEN FAILED [{response.status_code}]: {response.text}")
 
-    # 👇 السطر الوحيد الجديد: إنشاء الفولدر تلقائياً لو مش موجود (يحل مشكلة Render)
+    # إنشاء الفولدر تلقائياً لو مش موجود (يحل مشكلة Render)
     os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
 
     with open(output_path, "wb") as f:
