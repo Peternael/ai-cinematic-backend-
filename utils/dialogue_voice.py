@@ -30,6 +30,9 @@ def generate_single_voice(text, voice_id, output_path):
     if response.status_code != 200:
         raise Exception(response.text)
 
+    # 👇 السطر الوحيد الجديد: إنشاء الفولدر تلقائياً لو مش موجود (يحل مشكلة Render)
+    os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
+
     with open(output_path, "wb") as f:
         f.write(response.content)
 
@@ -46,7 +49,7 @@ def generate_dialogue(dialogue, output_path, voice_map, per_character_paths=None
 
     # تحويل مفاتيح الـ voice_map كلها لـ lowercase لتفادي مشاكل الـ Case Sensitivity
     clean_voice_map = {str(k).strip().lower(): v for k, v in voice_map.items()}
-    
+
     # (start_ms, AudioSegment) لكل متحدث باستخدام الاسم الـ cleaned
     speaker_clips = {str(name).strip().lower(): [] for name in voice_map}
 
@@ -109,7 +112,7 @@ def generate_dialogue(dialogue, output_path, voice_map, per_character_paths=None
     # =========================================
     if per_character_paths:
         full_duration_ms = len(combined)
-        
+
         # تحويل مسارات الحفظ لـ lowercase لمطابقتها مع الأسامي النظيفة
         clean_per_char_paths = {str(k).strip().lower(): v for k, v in per_character_paths.items()}
 
