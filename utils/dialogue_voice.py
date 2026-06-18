@@ -8,7 +8,8 @@ ELEVEN_API_KEY = "573e73750e552b6f9bb6026eefbfb18e8e078f1a8fc4e449d29d9a9b46be5f
 # GENERATE SINGLE VOICE
 # =========================================
 def generate_single_voice(text, voice_id, output_path):
-    url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}?output_format=mp3_44100_128"
+    url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
+
     headers = {
         "xi-api-key": ELEVEN_API_KEY,
         "Accept": "audio/mpeg",
@@ -26,12 +27,8 @@ def generate_single_voice(text, voice_id, output_path):
 
     response = requests.post(url, json=payload, headers=headers)
 
-    # 👇 السطر الوحيد اللي اتغيّر: بيوضّح رقم الخطأ + الرسالة في اللوج بدل ما تتخبّى
     if response.status_code != 200:
-        raise Exception(f"ELEVEN FAILED [{response.status_code}]: {response.text}")
-
-    # إنشاء الفولدر تلقائياً لو مش موجود (يحل مشكلة Render)
-    os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
+        raise Exception(response.text)
 
     with open(output_path, "wb") as f:
         f.write(response.content)
@@ -49,7 +46,7 @@ def generate_dialogue(dialogue, output_path, voice_map, per_character_paths=None
 
     # تحويل مفاتيح الـ voice_map كلها لـ lowercase لتفادي مشاكل الـ Case Sensitivity
     clean_voice_map = {str(k).strip().lower(): v for k, v in voice_map.items()}
-
+    
     # (start_ms, AudioSegment) لكل متحدث باستخدام الاسم الـ cleaned
     speaker_clips = {str(name).strip().lower(): [] for name in voice_map}
 
@@ -112,7 +109,7 @@ def generate_dialogue(dialogue, output_path, voice_map, per_character_paths=None
     # =========================================
     if per_character_paths:
         full_duration_ms = len(combined)
-
+        
         # تحويل مسارات الحفظ لـ lowercase لمطابقتها مع الأسامي النظيفة
         clean_per_char_paths = {str(k).strip().lower(): v for k, v in per_character_paths.items()}
 
