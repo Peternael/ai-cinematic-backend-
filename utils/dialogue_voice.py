@@ -2,7 +2,8 @@ import os
 import requests
 from pydub import AudioSegment
 
-ELEVEN_API_KEY = "573e73750e552b6f9bb6026eefbfb18e8e078f1a8fc4e449d29d9a9b46be5f13"
+# اقرأ المفتاح من Environment لو موجود، وإلا استخدم الافتراضي
+ELEVEN_API_KEY = os.environ.get("ELEVEN_API_KEY", "573e73750e552b6f9bb6026eefbfb18e8e078f1a8fc4e449d29d9a9b46be5f13")
 
 # =========================================
 # GENERATE SINGLE VOICE
@@ -27,8 +28,24 @@ def generate_single_voice(text, voice_id, output_path):
 
     response = requests.post(url, json=payload, headers=headers)
 
+    # ---- تشخيص واضح في اللوج ----
+    content_type = response.headers.get("content-type", "")
+    print(f"[ELEVEN] status={response.status_code} | type={content_type} | size={len(response.content)}")
+
+    # 1) لو السيرفر رجّع كود خطأ
     if response.status_code != 200:
-        raise Exception(response.text)
+        raise Exception(f"ELEVEN FAILED [{response.status_code}]: {response.text}")
+
+    # 2) لو رجّع 200 بس المحتوى مش صوت (JSON/HTML/خطأ) -> ده سبب ملف mp3 التالف
+    if "audio" not in content_type.lower():
+        raise Exception(f"ELEVEN returned NON-AUDIO [{content_type}]: {response.text[:300]}")
+
+    # 3) لو الرد صوت بس فاضي/صغير جدًا
+    if len(response.content) < 1000:
+        raise Exception(f"ELEVEN audio too small ({len(response.content)} bytes): {response.text[:300]}")
+
+    # إنشاء الفولدر لو مش موجود (حماية على Render)
+    os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
 
     with open(output_path, "wb") as f:
         f.write(response.content)
@@ -46,7 +63,7 @@ def generate_dialogue(dialogue, output_path, voice_map, per_character_paths=None
 
     # تحويل مفاتيح الـ voice_map كلها لـ lowercase لتفادي مشاكل الـ Case Sensitivity
     clean_voice_map = {str(k).strip().lower(): v for k, v in voice_map.items()}
-    
+
     # (start_ms, AudioSegment) لكل متحدث باستخدام الاسم الـ cleaned
     speaker_clips = {str(name).strip().lower(): [] for name in voice_map}
 
@@ -109,7 +126,7 @@ def generate_dialogue(dialogue, output_path, voice_map, per_character_paths=None
     # =========================================
     if per_character_paths:
         full_duration_ms = len(combined)
-        
+
         # تحويل مسارات الحفظ لـ lowercase لمطابقتها مع الأسامي النظيفة
         clean_per_char_paths = {str(k).strip().lower(): v for k, v in per_character_paths.items()}
 
